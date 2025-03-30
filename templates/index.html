@@ -1,0 +1,514 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="zh">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>AI 学习规划助手</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--            font-family: "微软雅黑", "Microsoft YaHei", sans-serif;-->
+<!--            margin: 0;-->
+<!--            padding: 20px;-->
+<!--            background-color: #f0f2f5;-->
+<!--        }-->
+<!--        .chat-container {-->
+<!--            max-width: 800px;-->
+<!--            margin: 0 auto;-->
+<!--            background: white;-->
+<!--            border-radius: 12px;-->
+<!--            box-shadow: 0 2px 12px rgba(0,0,0,0.1);-->
+<!--        }-->
+<!--        .chat-header {-->
+<!--            padding: 20px;-->
+<!--            background: #2d8cf0;-->
+<!--            color: white;-->
+<!--            border-radius: 12px 12px 0 0;-->
+<!--        }-->
+<!--        .chat-box {-->
+<!--            height: 60vh;-->
+<!--            padding: 20px;-->
+<!--            overflow-y: auto;-->
+<!--        }-->
+<!--        .message {-->
+<!--            margin: 12px 0;-->
+<!--            padding: 12px 16px;-->
+<!--            border-radius: 8px;-->
+<!--            line-height: 1.6;-->
+<!--        }-->
+<!--        .user-message {-->
+<!--            background: #e6f7ff;-->
+<!--            border: 1px solid #91d5ff;-->
+<!--            margin-left: 20%;-->
+<!--        }-->
+<!--        .ai-message {-->
+<!--            background: #f6f6f6;-->
+<!--            border: 1px solid #e8e8e8;-->
+<!--            margin-right: 20%;-->
+<!--        }-->
+<!--        .input-container {-->
+<!--            padding: 20px;-->
+<!--            background: #fafafa;-->
+<!--            border-radius: 0 0 12px 12px;-->
+<!--            display: flex;-->
+<!--            gap: 12px;-->
+<!--            position: relative;-->
+<!--        }-->
+<!--        #user-input {-->
+<!--            flex: 1;-->
+<!--            padding: 12px;-->
+<!--            border: 1px solid #ddd;-->
+<!--            border-radius: 6px;-->
+<!--            font-size: 16px;-->
+<!--        }-->
+<!--        button {-->
+<!--            padding: 12px 24px;-->
+<!--            background: #2d8cf0;-->
+<!--            color: white;-->
+<!--            border: none;-->
+<!--            border-radius: 6px;-->
+<!--            cursor: pointer;-->
+<!--            transition: background 0.3s;-->
+<!--        }-->
+<!--        button:hover {-->
+<!--            background: #1c6fe0;-->
+<!--        }-->
+<!--        button:disabled {-->
+<!--            background: #cccccc;-->
+<!--            cursor: not-allowed;-->
+<!--        }-->
+<!--        /* 加载动画 */-->
+<!--        .loader {-->
+<!--            display: none;-->
+<!--            border: 4px solid #f3f3f3;-->
+<!--            border-top: 4px solid #3498db;-->
+<!--            border-radius: 50%;-->
+<!--            width: 30px;-->
+<!--            height: 30px;-->
+<!--            animation: spin 1s linear infinite;-->
+<!--            margin: 10px auto;-->
+<!--        }-->
+<!--        @keyframes spin {-->
+<!--            0% { transform: rotate(0deg); }-->
+<!--            100% { transform: rotate(360deg); }-->
+<!--        }-->
+<!--        .wait-info {-->
+<!--            text-align: center;-->
+<!--            color: #666;-->
+<!--            font-size: 0.9em;-->
+<!--            margin: 10px 0;-->
+<!--        }-->
+<!--        .time-stamp {-->
+<!--            font-size: 0.8em;-->
+<!--            color: #999;-->
+<!--            margin-top: 8px;-->
+<!--            text-align: right;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--    <div class="chat-container">-->
+<!--        <div class="chat-header">-->
+<!--            <h2>📚 AI 学习规划助手</h2>-->
+<!--            <p>输入学习目标，获取个性化4周计划</p>-->
+<!--        </div>-->
+<!--        <div class="chat-box" id="chat-box"></div>-->
+<!--        <div class="input-container">-->
+<!--            <input type="text" id="user-input" placeholder="例如：准备Python数据分析考试...">-->
+<!--            <button onclick="sendMessage()" id="send-btn">发送</button>-->
+<!--        </div>-->
+<!--        &lt;!&ndash; 加载状态 &ndash;&gt;-->
+<!--        <div class="loader" id="loader"></div>-->
+<!--        <div class="wait-info" id="wait-info"></div>-->
+<!--    </div>-->
+
+<!--    <script>-->
+<!--        let isProcessing = false;-->
+<!--        let startTime = 0;-->
+
+<!--        // 回车发送功能-->
+<!--        document.getElementById('user-input').addEventListener('keypress', function(e) {-->
+<!--            if (e.key === 'Enter' && !isProcessing) {-->
+<!--                sendMessage();-->
+<!--            }-->
+<!--        });-->
+
+<!--        function sendMessage() {-->
+<!--            if (isProcessing) return;-->
+
+<!--            const input = document.getElementById('user-input');-->
+<!--            const message = input.value.trim();-->
+<!--            if (!message) return;-->
+
+<!--            // 更新界面状态-->
+<!--            toggleProcessingState(true);-->
+<!--            appendMessage('user', message);-->
+<!--            input.value = '';-->
+
+<!--            // 记录开始时间-->
+<!--            startTime = Date.now();-->
+
+<!--            fetch('/chat', {-->
+<!--                method: 'POST',-->
+<!--                headers: {-->
+<!--                    'Content-Type': 'application/json'-->
+<!--                },-->
+<!--                body: JSON.stringify({ message: message })-->
+<!--            })-->
+<!--            .then(response => {-->
+<!--                if (!response.ok) {-->
+<!--                    throw new Error(`HTTP error! status: ${response.status}`);-->
+<!--                }-->
+<!--                return response.json();-->
+<!--            })-->
+<!--            .then(data => {-->
+<!--                if (data.error) {-->
+<!--                    throw new Error(data.error);-->
+<!--                }-->
+<!--                const realTime = ((Date.now() - startTime) / 1000).toFixed(2);-->
+<!--                appendMessage('ai', `${data.reply}\n\n⏳ 本次响应时间：${data.wait_time}秒`);-->
+<!--            })-->
+<!--            .catch(error => {-->
+<!--                appendMessage('ai', `❌ 请求失败：${error.message}`);-->
+<!--            })-->
+<!--            .finally(() => {-->
+<!--                toggleProcessingState(false);-->
+<!--            });-->
+<!--        }-->
+
+<!--        function toggleProcessingState(isProcessing) {-->
+<!--            const loader = document.getElementById('loader');-->
+<!--            const info = document.getElementById('wait-info');-->
+<!--            const input = document.getElementById('user-input');-->
+<!--            const btn = document.getElementById('send-btn');-->
+
+<!--            if (isProcessing) {-->
+<!--                loader.style.display = 'block';-->
+<!--                info.textContent = 'AI正在思考中...';-->
+<!--                input.disabled = true;-->
+<!--                btn.disabled = true;-->
+<!--                btn.textContent = '发送中...';-->
+<!--            } else {-->
+<!--                loader.style.display = 'none';-->
+<!--                info.textContent = '';-->
+<!--                input.disabled = false;-->
+<!--                btn.disabled = false;-->
+<!--                btn.textContent = '发送';-->
+<!--            }-->
+<!--        }-->
+
+<!--        function appendMessage(role, content) {-->
+<!--            const chatBox = document.getElementById('chat-box');-->
+<!--            const messageDiv = document.createElement('div');-->
+
+<!--            messageDiv.className = `message ${role}-message`;-->
+<!--            messageDiv.innerHTML = `-->
+<!--                <div class="content">${content.replace(/\n/g, '<br>')}</div>-->
+<!--                <div class="time-stamp">${new Date().toLocaleTimeString()}</div>-->
+<!--            `;-->
+
+<!--            chatBox.appendChild(messageDiv);-->
+<!--            chatBox.scrollTop = chatBox.scrollHeight;-->
+<!--        }-->
+<!--    </script>-->
+<!--</body>-->
+<!--</html>-->
+
+
+
+
+<!--第二版加流式输出-->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 学习规划助手</title>
+    <style>
+        body {
+            font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .chat-header {
+            padding: 20px;
+            background: #2d8cf0;
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        .chat-box {
+            height: 60vh;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 12px 0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.6;
+            position: relative;
+        }
+        .user-message {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            margin-left: 20%;
+        }
+        .ai-message {
+            background: #f6f6f6;
+            border: 1px solid #e8e8e8;
+            margin-right: 20%;
+        }
+        .input-container {
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 0 0 12px 12px;
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #2d8cf0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1c6fe0;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .wait-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        .time-stamp {
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 8px;
+            text-align: right;
+        }
+        /* 打字机效果 */
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            background: #666;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>📚 AI 学习规划助手</h2>
+            <p>输入学习目标，获取个性化学习计划</p>
+        </div>
+        <div class="chat-box" id="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="输入你想生成的学习计划，例如：准备Python数据分析考试...">
+            <button onclick="sendMessage()" id="send-btn">发送</button>
+        </div>
+        <div class="loader" id="loader"></div>
+        <div class="wait-info" id="wait-info"></div>
+    </div>
+
+    <script>
+        let isProcessing = false;
+        let currentAiMessage = null;
+        let controller = null;
+
+        // 回车发送功能
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !isProcessing) {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            if (isProcessing) return;
+
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // 中止之前的请求（如果有）
+            if (controller) controller.abort();
+            controller = new AbortController();
+
+            toggleProcessingState(true);
+            appendMessage('user', message);
+            input.value = '';
+
+            // 创建AI消息容器
+            currentAiMessage = createAiMessage();
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message }),
+                signal: controller.signal
+            })
+            .then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                function read() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            // 添加时间戳
+                            addTimeStamp();
+                            currentAiMessage = null;
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const chunks = buffer.split('\n\n');
+                        buffer = chunks.pop() || '';
+
+                        chunks.forEach(chunk => {
+                            chunk = chunk.replace(/^data: /, '');
+                            try {
+                                const data = JSON.parse(chunk);
+                                if (data.content) {
+                                    appendStreamContent(data.content);
+                                }
+                            } catch (e) {
+                                console.error('解析错误:', e);
+                            }
+                        });
+
+                        return read();
+                    });
+                }
+                return read();
+            })
+            .catch(error => {
+                if (error.name !== 'AbortError') {
+                    appendMessage('ai', `❌ 请求失败：${error.message}`);
+                }
+            })
+            .finally(() => {
+                toggleProcessingState(false);
+                controller = null;
+            });
+        }
+
+        function appendStreamContent(content) {
+            const contentDiv = currentAiMessage.querySelector('.content');
+            // 添加打字机光标
+            if (!contentDiv.innerHTML.includes('typing-cursor')) {
+                contentDiv.innerHTML += '<span class="typing-cursor"></span>';
+            }
+            // 替换最后一个光标并添加新内容
+            contentDiv.innerHTML = contentDiv.innerHTML.replace(/<span class="typing-cursor"><\/span>$/, '')
+                + content.replace(/\n/g, '<br>')
+                + '<span class="typing-cursor"></span>';
+
+            // 自动滚动
+            contentDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function addTimeStamp() {
+            if (currentAiMessage) {
+                const contentDiv = currentAiMessage.querySelector('.content');
+                // 移除打字机光标
+                contentDiv.innerHTML = contentDiv.innerHTML.replace(/<span class="typing-cursor"><\/span>$/, '');
+
+                const timeStamp = document.createElement('div');
+                timeStamp.className = 'time-stamp';
+                timeStamp.textContent = new Date().toLocaleTimeString();
+                currentAiMessage.appendChild(timeStamp);
+            }
+        }
+
+        function createAiMessage() {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            messageDiv.innerHTML = `
+                <div class="content"></div>
+            `;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return messageDiv;
+        }
+
+        function appendMessage(role, content) {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.innerHTML = `
+                <div class="content">${content.replace(/\n/g, '<br>')}</div>
+                <div class="time-stamp">${new Date().toLocaleTimeString()}</div>
+            `;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function toggleProcessingState(processing) {
+            const loader = document.getElementById('loader');
+            const info = document.getElementById('wait-info');
+            const input = document.getElementById('user-input');
+            const btn = document.getElementById('send-btn');
+
+            isProcessing = processing;
+
+            if (processing) {
+                loader.style.display = 'block';
+                info.textContent = 'AI正在思考中...';
+                input.disabled = true;
+                btn.disabled = true;
+                btn.textContent = '发送中...';
+            } else {
+                loader.style.display = 'none';
+                info.textContent = '';
+                input.disabled = false;
+                btn.disabled = false;
+                btn.textContent = '发送';
+            }
+        }
+    </script>
+</body>
+</html>
